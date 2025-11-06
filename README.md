@@ -29,20 +29,26 @@ An advanced AI-powered exam proctoring system with comprehensive cheating detect
    - **Red Box**: Danger level (score > 0.65)
    - Real-time suspicion score display
 
-5. **Gaze Tracking**
+5. **Camera Selection** (NEW)
+   - Switch between multiple cameras dynamically
+   - Auto-detect available cameras
+   - Perfect for Camo Studio and external cameras
+   - Web-based camera controls
+
+6. **Gaze Tracking**
    - Face detection and tracking
    - Looking away detection
    - Multiple face detection
 
-6. **Audio Monitoring**
+7. **Audio Monitoring**
    - Voice activity detection
    - Whisper detection
 
-7. **Identity Verification**
+8. **Identity Verification**
    - Face recognition
    - Liveness detection
 
-8. **Screen Monitoring** (Now Enabled)
+9. **Screen Monitoring** (Now Enabled)
    - Tab switching detection
    - Suspicious application detection
 
@@ -71,11 +77,26 @@ pip install -r requirements.txt
 python -m src.fairx.run_local
 ```
 
-### 3. Run Web Server Mode
+### 3. Run Web Server Mode (Recommended)
 ```bash
 python -m src.fairx.server
 ```
 Then open: http://localhost:8000
+
+### 4. Using the Web Dashboard
+
+The web interface now includes:
+- **Camera Selection**: Choose from available cameras (0, 1, 2, etc.)
+- **Auto-Detection**: Automatically detect all available cameras
+- **Live Switching**: Change cameras without restarting the server
+- **Video File Testing**: Upload video files for testing (see VIDEO_TESTING_GUIDE.md)
+
+#### Camera Setup for Camo Studio Users:
+1. Start Camo Studio
+2. Open FAIRX dashboard at http://localhost:8000
+3. Click "Detect Available" to find your Camo Studio camera
+4. Select "Camera 1 (Camo Studio)" from the dropdown
+5. Click "Switch Camera"
 
 ## ⚙️ Configuration
 
@@ -83,7 +104,7 @@ Edit `src/fairx/config.py` to customize:
 
 ### Camera Settings
 ```python
-cam_index: int = 0  # 0 for built-in webcam, 1 for external
+cam_index: int = 1  # 0 for built-in webcam, 1 for Camo Studio/external
 camera_resolution: tuple = (1280, 720)
 ```
 
@@ -119,6 +140,7 @@ The system now provides real-time visual feedback:
   - Orange: Suspicious activity detected
   - Red: High-confidence cheating detected
 - **Labels**: Enhanced labels with confidence scores
+- **Camera Info**: Display current camera index
 
 ## 🔍 Detection Events
 
@@ -156,13 +178,28 @@ When suspicious activity is detected:
 - Video clips are recorded (4 seconds before + 4 seconds after event)
 - All evidence stored in `evidence/` directory
 
+## 🎬 Video File Testing
+
+For creating demo videos or testing without a live camera:
+- See **VIDEO_TESTING_GUIDE.md** for detailed instructions
+- Use pre-recorded videos for demonstrations
+- Perfect for LinkedIn posts and presentations
+
 ## 🐛 Troubleshooting
 
 ### Camera Not Working
 ```python
 # Try different camera index in config.py
-cam_index: int = 0  # or 1, 2, etc.
+cam_index: int = 1  # or 0, 2, etc.
 ```
+
+Or use the web dashboard to auto-detect cameras.
+
+### Camo Studio Not Detected
+1. Make sure Camo Studio is running
+2. Click "Detect Available" in the web dashboard
+3. Try camera indices 0-4 manually
+4. Restart FAIRX server if needed
 
 ### Low Detection Rate
 ```python
@@ -201,10 +238,11 @@ FAIRX/
 │   ├── evidence.py            # Evidence recording
 │   ├── startup.py             # Thread initialization (UPDATED)
 │   ├── run_local.py           # Local runner (UPDATED)
-│   └── server.py              # Web server
+│   └── server.py              # Web server (ENHANCED)
 ├── web/
-│   └── index.html             # Web interface
+│   └── index.html             # Web interface (DEPRECATED - see server.py)
 ├── evidence/                  # Auto-generated evidence
+├── VIDEO_TESTING_GUIDE.md     # Video testing instructions (NEW)
 ├── requirements.txt
 └── README.md                  # This file
 ```
@@ -228,17 +266,19 @@ Contributions welcome! Areas for improvement:
 - Better false positive reduction
 - Multi-language support
 - Mobile app integration
+- Enhanced video file support
 
 ## 📞 Support
 
 For issues or questions, please check:
 1. Configuration settings in `config.py`
-2. Camera index and permissions
+2. Camera index and permissions (use web dashboard to detect)
 3. Python version (3.8+ required)
 4. All dependencies installed correctly
+5. VIDEO_TESTING_GUIDE.md for demo recording
 
 ---
 
-**Version**: 2.0 Enhanced
+**Version**: 2.1 Enhanced with Camera Selection
 **Last Updated**: 2024
 **Status**: Production Ready ✅

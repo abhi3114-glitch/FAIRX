@@ -17,7 +17,7 @@ class Weights(BaseModel):
 
 class Config(BaseModel):
     # CAMERA INPUT
-    cam_index: int = 0               # Changed to 0 for built-in webcam (was 1)
+    cam_index: int = 1               # Set to 1 for Camo Studio
     camera_resolution: tuple = (1280, 720)
 
     # YOLO MODEL CONFIG - UPGRADED

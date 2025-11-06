@@ -32,6 +32,8 @@ last_trigger = {k: 0 for k in set(DEVICE_CLASSES.values())}
 class VisionThread(threading.Thread):
     def __init__(self, cam_index=CFG.cam_index):
         super().__init__(daemon=True)
+        self.cam_index = cam_index
+        self.running = True
 
         # Load YOLO model with enhanced settings
         self.model = YOLO(CFG.yolo_model)
@@ -57,6 +59,13 @@ class VisionThread(threading.Thread):
         # NEW: Track alert state for color coding
         self.alert_level = "normal"  # normal, warning, danger
 
+    def stop(self):
+        """Stop the thread gracefully"""
+        self.running = False
+        if self.cap is not None and self.cap.isOpened():
+            self.cap.release()
+        print(f"[Vision] 🛑 Stopped camera {self.cam_index}")
+
     def _get_box_color(self, confidence):
         """NEW: Return box color based on confidence and current suspicion score"""
         current_score = SCORE.score()
@@ -75,7 +84,7 @@ class VisionThread(threading.Thread):
         print("[Vision] 🚀 Vision engine running with enhanced YOLO model")
 
         frame_id = 0
-        while True:
+        while self.running:
             ok, frame = self.cap.read()
             if not ok:
                 print("[Vision] ⚠️ Camera read fail... retrying")
@@ -104,10 +113,10 @@ class VisionThread(threading.Thread):
             current_score = SCORE.score()
             status_color = self._get_box_color(current_score)
             status_text = f"Alert: {self.alert_level.upper()} | Score: {current_score:.2f}"
-            model_info = f"Model: {CFG.yolo_model.replace('.pt', '').upper()}"
+            model_info = f"Model: {CFG.yolo_model.replace('.pt', '').upper()} | Cam: {self.cam_index}"
             
             # Status background
-            cv2.rectangle(annotated, (10, 10), (450, 70), (0, 0, 0), -1)
+            cv2.rectangle(annotated, (10, 10), (500, 70), (0, 0, 0), -1)
             cv2.putText(annotated, status_text, (20, 35), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, status_color, 2)
             cv2.putText(annotated, model_info, (20, 60), 
@@ -174,3 +183,7 @@ class VisionThread(threading.Thread):
                 FRAME_BUFFER.frame = annotated
 
             time.sleep(0.01)
+        
+        # Cleanup on exit
+        if self.cap is not None and self.cap.isOpened():
+            self.cap.release()

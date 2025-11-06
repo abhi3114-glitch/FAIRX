@@ -12,9 +12,24 @@ from .movement_detector import MovementDetectorThread  # NEW
 
 # Global flag to avoid duplicate thread startups
 _threads_started = False
+_vision_thread = None
+
+def restart_vision_thread(cam_index):
+    """Restart vision thread with new camera index"""
+    global _vision_thread
+    
+    if _vision_thread is not None:
+        print(f"[STARTUP] Stopping old vision thread...")
+        _vision_thread.stop()
+        _vision_thread = None
+    
+    print(f"[STARTUP] Starting new vision thread on camera {cam_index}")
+    _vision_thread = VisionThread(cam_index=cam_index)
+    _vision_thread.start()
+    print(f"[STARTUP] ✅ Vision thread restarted on camera {cam_index}")
 
 def start_all_threads():
-    global _threads_started
+    global _threads_started, _vision_thread
 
     if _threads_started:
         print("[STARTUP] Threads already running — skipping.")
@@ -29,7 +44,8 @@ def start_all_threads():
     # ✅ Vision only — ONLY ONE CAMERA CAPTURE
     cam = CFG.cam_index
     print(f"📹 Starting VisionThread on camera index {cam}")
-    threads.append(VisionThread(cam_index=cam))
+    _vision_thread = VisionThread(cam_index=cam)
+    threads.append(_vision_thread)
 
     # ✅ Gaze — now reads from FRAME_BUFFER, do NOT pass cam index
     print("👁 Starting GazeThread (shared feed)")
