@@ -10,45 +10,45 @@ class Weights(BaseModel):
     exchange: float = 0.25          # suspicious gestures/handover
     liveness_fail: float = 0.30
     identity_mismatch: float = 0.70 # most important
-    hand_gesture: float = 0.35      # NEW: suspicious hand movements
-    paper_passing: float = 0.60     # NEW: paper/chit passing detected
-    excessive_movement: float = 0.30 # NEW: too much body movement
+    hand_gesture: float = 0.35      # suspicious hand movements
+    paper_passing: float = 0.60     # paper/chit passing detected
+    excessive_movement: float = 0.30 # too much body movement
     unknown: float = 0.05           # fallback
 
 class Config(BaseModel):
-    # CAMERA INPUT
-    cam_index: int = 1               # Set to 1 for Camo Studio
+    # VIDEO SOURCE (Camera or File)
+    cam_index: int = 0               # Camera index (0 = default, 1 = external)
+    video_file_path: str = None      # Path to video file (overrides camera if set)
     camera_resolution: tuple = (1280, 720)
+    
+    # PERFORMANCE OPTIMIZATION
+    frame_skip: int = 1              # Process every Nth frame (1=all, 2=half, 3=third)
+    jpeg_quality: int = 75           # JPEG compression quality for streaming (50-95)
+    enable_gpu: bool = False         # Use GPU acceleration if available
 
-    # YOLO MODEL CONFIG - UPGRADED
-    # Available models (in order of accuracy vs speed):
-    # - yolov8n.pt: Fastest, lowest accuracy (nano)
-    # - yolov8s.pt: Good balance - RECOMMENDED for most systems (small)
-    # - yolov8m.pt: Better accuracy, slower (medium)
-    # - yolov8l.pt: High accuracy, much slower (large)
-    # - yolov8x.pt: Best accuracy, slowest (extra-large)
-    yolo_model: str = "yolov8s.pt"   # UPGRADED from yolov8n.pt for better detection
-    yolo_conf_threshold: float = 0.38 # LOWERED slightly for yolov8s (more accurate model)
-    yolo_min_box_area: int = 400     # LOWERED further to catch smaller objects
-    yolo_iou_threshold: float = 0.45 # NEW: IoU threshold for NMS (non-max suppression)
+    # YOLO MODEL CONFIG
+    yolo_model: str = "yolov8s.pt"   # yolov8n/s/m/l/x
+    yolo_conf_threshold: float = 0.38
+    yolo_min_box_area: int = 400
+    yolo_iou_threshold: float = 0.45
     
     # YOLO Performance Settings
-    yolo_imgsz: int = 640            # Input image size (640 is standard, can use 1280 for better accuracy but slower)
-    yolo_half_precision: bool = False # Use FP16 for faster inference (requires CUDA)
+    yolo_imgsz: int = 640            # Input image size
+    yolo_half_precision: bool = False # Use FP16 for faster inference
     yolo_device: str = "cpu"         # "cpu" or "cuda" or "0" for GPU
 
     # GAZE / FACE PARAMETERS
     gaze_yaw_thresh: float = 24.0
     gaze_pitch_thresh: float = 18.0
 
-    # HAND GESTURE DETECTION (NEW)
+    # HAND GESTURE DETECTION
     hand_confidence_threshold: float = 0.60
-    hand_movement_threshold: float = 80  # pixels moved to trigger alert
+    hand_movement_threshold: float = 80
     gesture_cooldown: float = 2.0
 
-    # MOVEMENT DETECTION (NEW)
-    movement_threshold: float = 100  # pixels of body movement
-    movement_time_window: float = 1.0  # seconds
+    # MOVEMENT DETECTION
+    movement_threshold: float = 100
+    movement_time_window: float = 1.0
 
     # SCORING / DECAY
     score_decay_sec: float = 25.0
@@ -68,20 +68,20 @@ class Config(BaseModel):
         "whisper": 1.5,
         "tab_switch": 5.0,
         "exchange": 2.0,
-        "hand_gesture": 2.0,      # NEW
-        "paper_passing": 3.0,     # NEW
-        "excessive_movement": 2.5 # NEW
+        "hand_gesture": 2.0,
+        "paper_passing": 3.0,
+        "excessive_movement": 2.5
     }
 
     # ENABLE / DISABLE MODULES
     ENABLE_AUDIO: bool = True
     ENABLE_EVIDENCE: bool = True
     ENABLE_IDENTITY: bool = True
-    ENABLE_SCREEN_AGENT: bool = True  # ENABLED (was False)
-    ENABLE_HAND_DETECTION: bool = True # NEW
-    ENABLE_MOVEMENT_DETECTION: bool = True # NEW
+    ENABLE_SCREEN_AGENT: bool = True
+    ENABLE_HAND_DETECTION: bool = True
+    ENABLE_MOVEMENT_DETECTION: bool = True
 
-    # VISUAL ALERTS (NEW)
+    # VISUAL ALERTS
     alert_box_color_normal: tuple = (0, 255, 0)  # Green
     alert_box_color_warning: tuple = (0, 165, 255)  # Orange
     alert_box_color_danger: tuple = (0, 0, 255)  # Red
@@ -90,6 +90,7 @@ class Config(BaseModel):
 
     # SERVER CONFIG
     port: int = 8000
+    upload_dir: str = "uploads"      # Directory for uploaded video files
     
     # attach weights
     weights: Weights = Weights()
@@ -97,5 +98,6 @@ class Config(BaseModel):
 
 CFG = Config()
 
-# Ensure evidence directory exists
+# Ensure directories exist
 os.makedirs(CFG.evidence_dir, exist_ok=True)
+os.makedirs(CFG.upload_dir, exist_ok=True)
