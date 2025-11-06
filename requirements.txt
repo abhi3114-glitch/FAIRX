@@ -14,33 +14,13 @@ psutil==6.0.0
 # Audio VAD (CPU)
 webrtcvad==2.0.10
 sounddevice==0.4.7
+soundfile==0.12.1
 
 
 # Windows online-mode helpers (safe to skip on Linux/Mac)
 pywin32==306
 pynput==1.7.7
 screeninfo==0.8.1
-
-
-# Concurrency / utils
-rich==13.8.1
-```txt
-# Core
-ultralytics==8.3.33
-opencv-python==4.10.0.84
-numpy==1.26.4
-mediapipe==0.10.14
-pydantic==2.9.2
-fastapi==0.115.2
-uvicorn==0.30.6
-websockets==12.0
-psutil==6.0.0
-
-
-# Audio VAD (CPU)
-webrtcvad==2.0.10
-pyaudio==0.2.14
-sounddevice==0.4.7
 
 
 # Concurrency / utils

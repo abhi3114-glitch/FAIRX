@@ -60,6 +60,10 @@ class EvidenceRecorder:
             daemon=True
         ).start()
 
+    def save_async(self, tag="event", confidence=0):
+        """Alias for save_clip_async - used by other modules"""
+        return self.save_clip_async(tag, confidence)
+
     def _save_clip(self, tag, confidence):
         ts = time()
         readable = strftime("%Y-%m-%d_%H-%M-%S", localtime(ts))

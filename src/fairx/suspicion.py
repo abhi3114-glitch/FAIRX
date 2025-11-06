@@ -29,8 +29,12 @@ class SuspicionScore:
     def score(self):
         return self._base_score()
 
-    def trigger_event(self, ev, frame=None):
+    def add(self, ev, frame=None):
         """Add event + handle evidence + debounce spam"""
+        # Handle None events (from cooldown in Event.now)
+        if ev is None:
+            return
+            
         now = time()
         cool = CFG.event_cooldown.get(ev.kind, 1.5)
 
@@ -56,3 +60,11 @@ class SuspicionScore:
                 self.evidence.save_clip_async(ev.kind, ev.confidence)
 
         print(f"[SCORE] 🔔 Event: {ev.kind}, conf={ev.confidence:.2f}, score={score:.2f}")
+
+    def trigger_event(self, ev, frame=None):
+        """Alias for backward compatibility"""
+        return self.add(ev, frame)
+
+
+# ✅ FIX: Create global SCORE instance
+SCORE = SuspicionScore()
