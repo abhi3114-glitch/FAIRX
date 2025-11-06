@@ -1,32 +1,61 @@
 from fastapi import FastAPI, WebSocket
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+import base64, json, cv2, asyncio, os, time
+
 from .suspicion import SCORE
 from .frame_buffer import FRAME_BUFFER
-import base64, json, cv2, asyncio
+from .config import CFG
+from .startup import start_all_threads
 
 app = FastAPI(title="FAIRX")
 
+# Serve evidence directory
+os.makedirs(CFG.evidence_dir, exist_ok=True)
+app.mount("/evidence", StaticFiles(directory=CFG.evidence_dir), name="evidence")
+
+
+@app.get("/api/evidence")
+async def evidence_api(limit: int = 50):
+    items = []
+    log_file = os.path.join(CFG.evidence_dir, "log.jsonl")
+    if os.path.exists(log_file):
+        with open(log_file, "r") as f:
+            lines = f.readlines()[-limit:][::-1]
+            for ln in lines:
+                try: items.append(json.loads(ln))
+                except: pass
+    return JSONResponse(items)
+
+
+# ✅ Removed f from f""" ... """
 HTML = """
 <!DOCTYPE html>
 <html>
 <head>
-  <title>FAIRX Monitor</title>
-  <style>
-    body { font-family: Arial; padding: 20px; background: #f0f0f0; }
-    h2 { color: #333; }
-    .container { display: flex; gap: 30px; }
-    .video-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .score-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    #cam { border: 2px solid #333; border-radius: 4px; max-width: 100%; }
-    #score { font-size: 48px; font-weight: bold; color: #2ecc71; margin: 10px 0; }
-    #score.warning { color: #f39c12; }
-    #score.danger { color: #e74c3c; }
-    #log { height: 300px; overflow: auto; background: #f9f9f9; padding: 10px; border-radius: 4px; }
-    #log li { margin: 5px 0; padding: 5px; background: white; border-radius: 3px; }
-    .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
-    .status.connected { background: #d4edda; color: #155724; }
-    .status.disconnected { background: #f8d7da; color: #721c24; }
-  </style>
+<title>FAIRX Monitor</title>
+<style>
+body { font-family: Arial; padding: 20px; background: #f0f0f0; }
+h2 { color: #333; }
+.container { display: flex; gap: 30px; }
+.video-box, .score-box {
+  background: #fff; padding: 20px; border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
+#cam { border: 2px solid #222; border-radius: 6px; width: 640px; }
+#score { font-size: 48px; font-weight: bold; }
+#score.warning { color: #f39c12; }
+#score.danger { color: #e74c3c; }
+#score.ok { color: #2ecc71; }
+.status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+.status.connected { background: #d4edda; color: #155724; }
+.status.disconnected { background: #f8d7da; color: #721c24; }
+#log { height: 260px; overflow: auto; background: #fafafa; padding: 8px; border-radius: 4px; }
+#log li { margin: 4px 0; padding: 4px; background: white; border-radius: 3px; font-size: 13px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, 180px); gap: 10px; margin-top: 15px; }
+.thumb { width: 180px; border-radius: 6px; border: 1px solid #ddd; }
+small { font-size: 11px; color: #888; }
+</style>
 </head>
 <body>
 
@@ -37,98 +66,85 @@ HTML = """
 
 <div class="container">
   <div class="video-box">
-    <h3>Camera Feed</h3>
-    <img id='cam' width="640">
+    <h3>Camera Feed <small id="fps"></small></h3>
+    <img id="cam">
+    <div id="lat" style="font-size:12px; color:#666; margin-top:6px"></div>
   </div>
 
   <div class="score-box">
     <h3>Suspicion Score</h3>
-    <div id='score'>0.00</div>
-    <h4>Recent Events</h4>
+    <div id='score' class="ok">0.00</div>
+
+    <h4>Events</h4>
     <ul id='log'></ul>
+
+    <button onclick="loadEv()">📦 Refresh Evidence</button>
+    <a href="/evidence/log.jsonl" target="_blank">View Raw Logs</a>
   </div>
 </div>
 
+<h3>Evidence</h3>
+<div id="ev" class="grid"></div>
+
 <script>
-function WS(path) {
-  const proto = location.protocol === "https:" ? "wss://" : "ws://";
-  return proto + location.host + path;
+const WS = path => (location.protocol === "https:" ? "wss://" : "ws://") + location.host + path;
+
+function setStatus(id, connected) {
+  const el = document.getElementById(id);
+  el.className = "status " + (connected ? "connected" : "disconnected");
+  el.textContent = (id === "status-video" ? "📹 Video: " : "📊 Score: ") + (connected ? "Connected" : "Disconnected");
 }
 
-console.log("[BROWSER] Connecting WebSockets...");
+async function loadEv() {
+  const res = await fetch("/api/evidence?limit=30");
+  const data = await res.json();
+  const el = document.getElementById("ev");
+  el.innerHTML = "";
+  for (let x of data) {
+    el.innerHTML += `
+      <div>
+        <a href="/evidence/${x.image}" target="_blank">
+          <img src="/evidence/${x.image}" class="thumb">
+        </a>
+        <div><small>${x.ts}<br>${x.kind} (${x.confidence})</small></div>
+      </div>`;
+  }
+}
+loadEv();
 
 let wsScore = new WebSocket(WS("/ws"));
 let wsVideo = new WebSocket(WS("/video"));
 
-// Score WebSocket
-wsScore.onopen = () => {
-  console.log("[BROWSER] ✅ Score WS connected");
-  document.getElementById("status-score").className = "status connected";
-  document.getElementById("status-score").textContent = "📊 Score: Connected";
-};
-
-wsScore.onclose = () => {
-  console.log("[BROWSER] ❌ Score WS closed");
-  document.getElementById("status-score").className = "status disconnected";
-  document.getElementById("status-score").textContent = "📊 Score: Disconnected";
-};
-
-wsScore.onerror = e => {
-  console.log("[BROWSER] ⚠ Score WS error", e);
-};
+wsScore.onopen = () => setStatus("status-score", true);
+wsScore.onclose = () => setStatus("status-score", false);
 
 wsScore.onmessage = e => {
   let d = JSON.parse(e.data);
-  let scoreEl = document.getElementById("score");
   let score = d.score;
-  
-  scoreEl.innerText = score.toFixed(2);
-  
-  // Color coding
-  scoreEl.className = "";
-  if (score > 0.7) scoreEl.className = "danger";
-  else if (score > 0.4) scoreEl.className = "warning";
+  let el = document.getElementById("score");
+  el.textContent = score.toFixed(2);
+  el.className = score > 0.7 ? "danger" : score > 0.4 ? "warning" : "ok";
 
-  if(d.last_event){
+  if (d.last_event) {
     let li = document.createElement("li");
-    li.textContent = d.last_event.kind + " (" + d.last_event.confidence.toFixed(2) + ")";
+    li.textContent = `${d.last_event.kind} (${d.last_event.confidence.toFixed(2)})`;
     document.getElementById("log").prepend(li);
-    
-    // Keep only last 50 events
-    let log = document.getElementById("log");
-    while(log.children.length > 50) {
-      log.removeChild(log.lastChild);
-    }
   }
 };
 
-// Video WebSocket
-wsVideo.onopen = () => {
-  console.log("[BROWSER] ✅ Video WS connected");
-  document.getElementById("status-video").className = "status connected";
-  document.getElementById("status-video").textContent = "📹 Video: Connected";
-};
+let frames = 0, last = performance.now();
+wsVideo.onopen = () => setStatus("status-video", true);
+wsVideo.onclose = () => setStatus("status-video", false);
 
-wsVideo.onclose = () => {
-  console.log("[BROWSER] ❌ Video WS closed");
-  document.getElementById("status-video").className = "status disconnected";
-  document.getElementById("status-video").textContent = "📹 Video: Disconnected";
-};
-
-wsVideo.onerror = e => {
-  console.log("[BROWSER] ⚠ Video WS error", e);
-};
-
-let frameCount = 0;
 wsVideo.onmessage = e => {
-  frameCount++;
-  if(frameCount % 30 == 0) {
-    console.log("[BROWSER] Received", frameCount, "frames, latest size:", e.data.length);
+  const t = performance.now();
+  frames++;
+  if (frames % 20 === 0) {
+    const fps = (frames * 1000 / (t - last)).toFixed(1);
+    document.getElementById("fps").textContent = `(${fps} FPS)`;
   }
-  
-  if(e.data.length > 20) {
-    document.getElementById("cam").src = "data:image/jpeg;base64," + e.data;
-  }
+  document.getElementById("lat").textContent = `Latency: ${(performance.now() - t).toFixed(1)} ms`;
+  document.getElementById("cam").src = "data:image/jpeg;base64," + e.data;
 };
 </script>
 
@@ -139,6 +155,7 @@ wsVideo.onmessage = e => {
 @app.get("/")
 async def index():
     return HTMLResponse(HTML)
+
 
 @app.websocket("/ws")
 async def ws_score(ws: WebSocket):
@@ -151,41 +168,33 @@ async def ws_score(ws: WebSocket):
                 "last_event": SCORE.last_event.dict() if SCORE.last_event else None
             }))
             await asyncio.sleep(0.2)
-    except Exception as e:
-        print(f"[SERVER] ❌ Score WS disconnected: {e}")
+    except Exception:
+        print("[SERVER] ❌ Score WS closed")
+
 
 @app.websocket("/video")
 async def ws_video(ws: WebSocket):
     await ws.accept()
     print("[SERVER] ✅ Video WS connected")
-    frame_count = 0
     try:
         while True:
             with FRAME_BUFFER.lock:
-                frame = None if FRAME_BUFFER.frame is None else FRAME_BUFFER.frame.copy()
+                frame = FRAME_BUFFER.frame.copy() if FRAME_BUFFER.frame is not None else None
 
             if frame is None:
-                await asyncio.sleep(0.05)
+                await asyncio.sleep(0.03)
                 continue
 
-            ok, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
-            if not ok:
-                continue
+            ok, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 75])
+            if ok:
+                await ws.send_text(base64.b64encode(buf).decode())
+            await asyncio.sleep(0.03)
 
-            b64 = base64.b64encode(buffer).decode()
-            
-            frame_count += 1
-            if frame_count % 30 == 0:
-                print(f"[SERVER] Sent {frame_count} frames, latest size: {len(b64)} bytes")
+    except Exception:
+        print("[SERVER] ❌ Video WS closed")
 
-            await ws.send_text(b64)
-            await asyncio.sleep(0.033)  # ~30 FPS
-    except Exception as e:
-        print(f"[SERVER] ❌ Video WS disconnected: {e}")
 
-# Auto-start threads when FastAPI starts
 @app.on_event("startup")
-async def startup_event():
-    """Initialize all monitoring threads on server startup"""
-    from .startup import start_all_threads
+async def start_threads():
     start_all_threads()
+    print("✅ All FAIRX threads started")
