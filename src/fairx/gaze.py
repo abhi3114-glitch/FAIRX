@@ -1,32 +1,33 @@
-import cv2, mediapipe as mp, threading
+import cv2, mediapipe as mp, threading, time
 from .events import Event
 from .suspicion import SCORE
 from .config import CFG
+from .frame_buffer import FRAME_BUFFER
 
 mp_face = mp.solutions.face_mesh
 
 class GazeThread(threading.Thread):
     def __init__(self, cam_index=0):
         super().__init__(daemon=True)
-
-        # Force phone camera index + DirectShow
-        self.cap = cv2.VideoCapture(CFG.cam_index, cv2.CAP_DSHOW)
-
-        # Recommended camera settings for phone webcam
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-        self.cap.set(cv2.CAP_PROP_FPS, 30)
-
+        
+        # Don't open camera - read from shared frame buffer instead
         self.mesh = mp_face.FaceMesh(
             min_detection_confidence=0.6,
             min_tracking_confidence=0.6,
             refine_landmarks=True
         )
+        print("[GazeThread] ✅ Initialized (using shared frame buffer)")
 
     def run(self):
+        print("[GazeThread] ✅ Started gaze detection")
+        
         while True:
-            ok, frame = self.cap.read()
-            if not ok:
+            # Read from shared frame buffer
+            with FRAME_BUFFER.lock:
+                frame = None if FRAME_BUFFER.frame is None else FRAME_BUFFER.frame.copy()
+            
+            if frame is None:
+                time.sleep(0.01)
                 continue
 
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -51,3 +52,5 @@ class GazeThread(threading.Thread):
 
                     if abs(yaw) > CFG.gaze_yaw_thresh or abs(pitch) > CFG.gaze_pitch_thresh:
                         SCORE.add(Event.now("gaze", 0.8, yaw=yaw, pitch=pitch))
+            
+            time.sleep(0.05)  # Process at ~20 FPS

@@ -1,4 +1,4 @@
-import cv2, threading
+import cv2, threading, time
 from ultralytics import YOLO
 from .events import Event
 from .suspicion import SCORE
@@ -17,28 +17,37 @@ class VisionThread(threading.Thread):
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
         self.cap.set(cv2.CAP_PROP_FPS, 30)
-
-        print(f"[VisionThread] ✅ Camera opened at index {cam_index}")
+        
+        # Verify camera opened
+        if not self.cap.isOpened():
+            print(f"[VisionThread] ❌ FAILED to open camera at index {cam_index}")
+        else:
+            print(f"[VisionThread] ✅ Camera opened at index {cam_index}")
 
     def run(self):
         print("[VisionThread] ✅ Started vision thread")
+        frame_count = 0
 
         while True:
             ok, frame = self.cap.read()
             if not ok:
-                print("[VisionThread] ❌ Could not read frame")
+                print("[VisionThread] ❌ Could not read frame - retrying...")
+                time.sleep(0.1)
                 continue
             
-            print("[VisionThread] 📷 Frame captured")
+            frame_count += 1
+            
+            # Only log every 30 frames to reduce spam
+            if frame_count % 30 == 0:
+                print(f"[VisionThread] 📷 Frame {frame_count} captured")
 
             # YOLO inference
             results = self.model.predict(frame, conf=0.4, verbose=False)
-            annotated = results[0].plot()  # numpy frame
+            annotated = results[0].plot()
 
             # Write annotated frame to buffer
             with FRAME_BUFFER.lock:
                 FRAME_BUFFER.frame = annotated.copy()
-                print("[VisionThread] ✅ Frame written to buffer")
 
             # Device suspicion scoring
             for r in results:
@@ -46,3 +55,6 @@ class VisionThread(threading.Thread):
                     if int(cls) in DEVICE_CLASSES:
                         SCORE.add(Event.now("device", float(conf)))
                         print(f"[VisionThread] 🚨 Device detected: {DEVICE_CLASSES[int(cls)]} ({conf:.2f})")
+            
+            # Small sleep to prevent CPU overload
+            time.sleep(0.01)
