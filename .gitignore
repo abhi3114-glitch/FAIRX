@@ -1,0 +1,14 @@
+.venv/
+*.pt
+*.npy
+__pycache__/
+*.pyd
+*.dll
+*.so
+*.exe
+*.bin
+*.onnx
+*.h5
+temp/
+cache/
+*.log
