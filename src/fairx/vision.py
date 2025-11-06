@@ -33,8 +33,12 @@ class VisionThread(threading.Thread):
     def __init__(self, cam_index=CFG.cam_index):
         super().__init__(daemon=True)
 
+        # Load YOLO model with enhanced settings
         self.model = YOLO(CFG.yolo_model)
         print(f"[Vision] ✅ Loaded YOLO model: {CFG.yolo_model}")
+        print(f"[Vision] 📊 Model size: {CFG.yolo_model.replace('.pt', '').upper()}")
+        print(f"[Vision] 🎯 Confidence threshold: {CFG.yolo_conf_threshold}")
+        print(f"[Vision] 📏 Min box area: {CFG.yolo_min_box_area}px")
 
         self.cap = cv2.VideoCapture(cam_index, cv2.CAP_DSHOW)
         w, h = CFG.camera_resolution
@@ -68,7 +72,7 @@ class VisionThread(threading.Thread):
             return CFG.alert_box_color_normal  # GREEN
 
     def run(self):
-        print("[Vision] 🚀 Vision engine running")
+        print("[Vision] 🚀 Vision engine running with enhanced YOLO model")
 
         frame_id = 0
         while True:
@@ -87,19 +91,27 @@ class VisionThread(threading.Thread):
                 results = self.model.predict(
                     frame,
                     conf=CFG.yolo_conf_threshold,
-                    imgsz=640,
+                    iou=CFG.yolo_iou_threshold,
+                    imgsz=CFG.yolo_imgsz,
+                    half=CFG.yolo_half_precision,
+                    device=CFG.yolo_device,
                     verbose=False
                 )
 
             annotated = frame.copy()
             
-            # NEW: Add status indicator in corner
+            # NEW: Add enhanced status indicator in corner
             current_score = SCORE.score()
             status_color = self._get_box_color(current_score)
             status_text = f"Alert: {self.alert_level.upper()} | Score: {current_score:.2f}"
-            cv2.rectangle(annotated, (10, 10), (400, 50), (0, 0, 0), -1)
+            model_info = f"Model: {CFG.yolo_model.replace('.pt', '').upper()}"
+            
+            # Status background
+            cv2.rectangle(annotated, (10, 10), (450, 70), (0, 0, 0), -1)
             cv2.putText(annotated, status_text, (20, 35), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, status_color, 2)
+            cv2.putText(annotated, model_info, (20, 60), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
 
             if results:
                 for r in results:

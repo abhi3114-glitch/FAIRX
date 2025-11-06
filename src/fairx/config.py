@@ -20,10 +20,22 @@ class Config(BaseModel):
     cam_index: int = 0               # Changed to 0 for built-in webcam (was 1)
     camera_resolution: tuple = (1280, 720)
 
-    # YOLO MODEL CONFIG
-    yolo_model: str = "yolov8n.pt"   # can change to s/m if device strong
-    yolo_conf_threshold: float = 0.40 # LOWERED from 0.55 for better detection
-    yolo_min_box_area: int = 500     # LOWERED from 800 to catch smaller objects
+    # YOLO MODEL CONFIG - UPGRADED
+    # Available models (in order of accuracy vs speed):
+    # - yolov8n.pt: Fastest, lowest accuracy (nano)
+    # - yolov8s.pt: Good balance - RECOMMENDED for most systems (small)
+    # - yolov8m.pt: Better accuracy, slower (medium)
+    # - yolov8l.pt: High accuracy, much slower (large)
+    # - yolov8x.pt: Best accuracy, slowest (extra-large)
+    yolo_model: str = "yolov8s.pt"   # UPGRADED from yolov8n.pt for better detection
+    yolo_conf_threshold: float = 0.38 # LOWERED slightly for yolov8s (more accurate model)
+    yolo_min_box_area: int = 400     # LOWERED further to catch smaller objects
+    yolo_iou_threshold: float = 0.45 # NEW: IoU threshold for NMS (non-max suppression)
+    
+    # YOLO Performance Settings
+    yolo_imgsz: int = 640            # Input image size (640 is standard, can use 1280 for better accuracy but slower)
+    yolo_half_precision: bool = False # Use FP16 for faster inference (requires CUDA)
+    yolo_device: str = "cpu"         # "cpu" or "cuda" or "0" for GPU
 
     # GAZE / FACE PARAMETERS
     gaze_yaw_thresh: float = 24.0
