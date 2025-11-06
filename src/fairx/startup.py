@@ -7,6 +7,8 @@ from .gaze import GazeThread
 from .identity import IdentityThread
 from .audio_vad import VADThread
 from .screen_agent import ScreenAgent
+from .hand_gesture import HandGestureThread  # NEW
+from .movement_detector import MovementDetectorThread  # NEW
 
 # Global flag to avoid duplicate thread startups
 _threads_started = False
@@ -19,7 +21,7 @@ def start_all_threads():
         return
 
     print("\n" + "="*50)
-    print("🚀 FAIRX STARTUP")
+    print("🚀 FAIRX STARTUP - ENHANCED VERSION")
     print("="*50)
 
     threads = []
@@ -36,7 +38,7 @@ def start_all_threads():
     # ✅ Identity — also uses FRAME_BUFFER only
     if CFG.ENABLE_IDENTITY:
         print("🔐 Starting IdentityThread (shared feed)")
-        threads.append(IdentityThread())  # Removed cam_index
+        threads.append(IdentityThread())
 
     # ✅ Audio VAD
     if CFG.ENABLE_AUDIO:
@@ -51,6 +53,16 @@ def start_all_threads():
         print("🖥 Starting ScreenAgent")
         threads.append(ScreenAgent())
 
+    # ✅ NEW: Hand Gesture Detection
+    if CFG.ENABLE_HAND_DETECTION:
+        print("✋ Starting HandGestureThread")
+        threads.append(HandGestureThread())
+
+    # ✅ NEW: Movement Detection
+    if CFG.ENABLE_MOVEMENT_DETECTION:
+        print("🏃 Starting MovementDetectorThread")
+        threads.append(MovementDetectorThread())
+
     # ✅ Launch all threads
     print("\n🔧 Launching threads...")
     for t in threads:
@@ -60,4 +72,13 @@ def start_all_threads():
 
     print("="*50)
     print("✅ FAIRX READY — All systems running")
+    print("📊 Active Modules:")
+    print("   - Object Detection (phones, laptops, books)")
+    print("   - Gaze Tracking")
+    print("   - Identity Verification")
+    print("   - Audio Monitoring")
+    print("   - Screen Activity Monitoring")
+    print("   - Hand Gesture Detection (NEW)")
+    print("   - Movement Detection (NEW)")
+    print("   - Visual Alert System (Green/Orange/Red)")
     print("="*50 + "\n")

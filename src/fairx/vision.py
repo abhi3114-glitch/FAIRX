@@ -7,11 +7,16 @@ from .frame_buffer import FRAME_BUFFER
 from .evidence import EvidenceRecorder
 from time import time as now
 
-# Map YOLO classes to cheating events
+# EXPANDED: Map YOLO classes to cheating events
 DEVICE_CLASSES = {
     67: "phone",
     63: "laptop",
-    0: "person"
+    0: "person",
+    73: "book",        # NEW
+    84: "book",        # NEW: alternative book class
+    76: "keyboard",    # NEW
+    64: "mouse",       # NEW
+    77: "cell phone",  # NEW: alternative phone detection
 }
 
 # Evidence buffer (auto clips around events)
@@ -22,7 +27,7 @@ EBUF = EvidenceRecorder(
 )
 
 # Cooldown storage
-last_trigger = {k: 0 for k in DEVICE_CLASSES.values()}
+last_trigger = {k: 0 for k in set(DEVICE_CLASSES.values())}
 
 class VisionThread(threading.Thread):
     def __init__(self, cam_index=CFG.cam_index):
@@ -42,8 +47,25 @@ class VisionThread(threading.Thread):
         else:
             print(f"[Vision] ✅ Camera ready on index {cam_index}")
 
-        # Detection smoothing buffer
-        self.detect_buffer = {c: 0 for c in DEVICE_CLASSES.values()}
+        # Detection smoothing buffer - REDUCED threshold from 3 to 2
+        self.detect_buffer = {c: 0 for c in set(DEVICE_CLASSES.values())}
+        
+        # NEW: Track alert state for color coding
+        self.alert_level = "normal"  # normal, warning, danger
+
+    def _get_box_color(self, confidence):
+        """NEW: Return box color based on confidence and current suspicion score"""
+        current_score = SCORE.score()
+        
+        if current_score >= CFG.alert_threshold_danger or confidence >= 0.80:
+            self.alert_level = "danger"
+            return CFG.alert_box_color_danger  # RED
+        elif current_score >= CFG.alert_threshold_warning or confidence >= 0.60:
+            self.alert_level = "warning"
+            return CFG.alert_box_color_warning  # ORANGE
+        else:
+            self.alert_level = "normal"
+            return CFG.alert_box_color_normal  # GREEN
 
     def run(self):
         print("[Vision] 🚀 Vision engine running")
@@ -70,6 +92,14 @@ class VisionThread(threading.Thread):
                 )
 
             annotated = frame.copy()
+            
+            # NEW: Add status indicator in corner
+            current_score = SCORE.score()
+            status_color = self._get_box_color(current_score)
+            status_text = f"Alert: {self.alert_level.upper()} | Score: {current_score:.2f}"
+            cv2.rectangle(annotated, (10, 10), (400, 50), (0, 0, 0), -1)
+            cv2.putText(annotated, status_text, (20, 35), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, status_color, 2)
 
             if results:
                 for r in results:
@@ -91,14 +121,14 @@ class VisionThread(threading.Thread):
                         if area < CFG.yolo_min_box_area:
                             continue
 
-                        # Detection smoothing
+                        # Detection smoothing - REDUCED from 3 to 2
                         self.detect_buffer[label] += 1
 
-                        # Confirm detection
-                        if self.detect_buffer[label] >= 3:
+                        # Confirm detection with LOWER threshold
+                        if self.detect_buffer[label] >= 2:  # CHANGED from 3
                             t = now()
                             # Cooldown check (prevent spam)
-                            if t - last_trigger[label] > CFG.event_cooldown.get(label, 2):
+                            if t - last_trigger.get(label, 0) > CFG.event_cooldown.get("device", 2):
                                 last_trigger[label] = t
 
                                 SCORE.add(Event.now("device", float(conf), label=label))
@@ -107,13 +137,20 @@ class VisionThread(threading.Thread):
                                 # Save evidence clip
                                 EBUF.save_async(label, confidence=float(conf))
 
-                        # Draw box
-                        color = (0,255,0)
-                        cv2.rectangle(annotated,(x1,y1),(x2,y2),color,2)
+                        # NEW: Draw box with dynamic color based on threat level
+                        color = self._get_box_color(float(conf))
+                        thickness = 3 if self.alert_level == "danger" else 2
+                        
+                        cv2.rectangle(annotated,(x1,y1),(x2,y2),color,thickness)
+                        
+                        # NEW: Enhanced label with background
+                        label_text = f"{label} {conf:.2f}"
+                        (text_w, text_h), _ = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+                        cv2.rectangle(annotated, (x1, y1-text_h-10), (x1+text_w+10, y1), color, -1)
                         cv2.putText(
-                            annotated, f"{label} {conf:.2f}",
-                            (x1, y1 - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2
+                            annotated, label_text,
+                            (x1+5, y1 - 5),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2
                         )
 
             # decay buffer
