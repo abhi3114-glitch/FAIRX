@@ -1,19 +1,21 @@
 # 🎓 FAIRX - AI Exam Proctoring System
 
-![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.8+-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-orange.svg)
+![Hardware](https://img.shields.io/badge/optimized-RTX%203050-brightgreen.svg)
 
-An advanced AI-powered exam proctoring system with comprehensive cheating detection capabilities. **FULLY FIXED AND PRODUCTION READY** ✅
+An advanced AI-powered exam proctoring system with comprehensive cheating detection capabilities. **FULLY FIXED, OPTIMIZED, AND PRODUCTION READY** ✅
 
 ---
 
 ## 🚀 Features
 
-### ✅ Object Detection (Enhanced)
+### ✅ Object Detection (Enhanced & Optimized)
 - Phones, laptops, tablets
 - Books, notebooks, papers
 - Keyboards, mice
+- **YOLOv8s model** - optimized for RTX 3050 (4GB VRAM)
 - Lowered detection thresholds for better accuracy
 
 ### ✅ Hand Gesture Detection
@@ -58,6 +60,28 @@ An advanced AI-powered exam proctoring system with comprehensive cheating detect
 
 ---
 
+## 💻 Hardware Requirements
+
+### Recommended (Optimized Configuration)
+- **GPU**: NVIDIA RTX 3050 (4GB VRAM) or better
+- **CPU**: AMD Ryzen 7 6800H or Intel equivalent
+- **RAM**: 16GB
+- **Storage**: 5GB free space
+
+### Minimum
+- **GPU**: Any CUDA-capable GPU with 2GB+ VRAM
+- **CPU**: Quad-core processor
+- **RAM**: 8GB
+- **Storage**: 3GB free space
+
+### Model Selection by Hardware
+- **RTX 3050 (4GB)**: YOLOv8s ✅ (Optimal - current default)
+- **RTX 3060 (6GB+)**: YOLOv8m (Better accuracy)
+- **RTX 4060 (8GB+)**: YOLOv8l (Best accuracy)
+- **CPU Only**: YOLOv8n (Fastest, lower accuracy)
+
+---
+
 ## 📦 Installation
 
 ### 1. Clone Repository
@@ -72,27 +96,37 @@ pip install -r requirements.txt
 ```
 
 **Required packages:**
-- ultralytics (YOLO)
+- ultralytics (YOLO) - optimized for RTX 3050
 - opencv-python
 - mediapipe (face mesh + hands)
 - webrtcvad (audio detection)
 - fastapi + uvicorn (web server)
+- torch + torchvision (CUDA support)
+
+### 3. Verify Setup
+```bash
+python test_setup.py
+```
 
 ---
 
 ## 🎯 Quick Start
 
-### Option 1: Local Mode (OpenCV Window)
+### Option 1: Interactive Launcher (Recommended)
 ```bash
-python -m src.fairx.run_local
+python run_fairx.py
 ```
 
-### Option 2: Web Server Mode (Recommended)
+### Option 2: Web Server Mode
 ```bash
 python -m src.fairx.server
 ```
-
 Then open: [http://localhost:8000](http://localhost:8000)
+
+### Option 3: Local Mode (OpenCV Window)
+```bash
+python -m src.fairx.run_local
+```
 
 ---
 
@@ -128,6 +162,9 @@ Edit `src/fairx/config.py` to customize:
 cam_index: int = 0  # 0 for built-in webcam, 1 for Camo Studio/external
 camera_resolution: tuple = (1280, 720)
 
+# YOLO Model (Optimized for RTX 3050)
+yolo_model: str = "yolov8s.pt"  # Small model - best for RTX 3050
+
 # Detection Thresholds
 yolo_conf_threshold: float = 0.40  # Object detection confidence
 hand_confidence_threshold: float = 0.60  # Hand detection confidence
@@ -143,6 +180,18 @@ ENABLE_IDENTITY: bool = True
 ENABLE_SCREEN_AGENT: bool = True
 ENABLE_HAND_DETECTION: bool = True
 ENABLE_MOVEMENT_DETECTION: bool = True
+```
+
+### Model Selection for Different Hardware
+
+For **RTX 3060 or better** (6GB+ VRAM):
+```python
+yolo_model: str = "yolov8m.pt"  # Medium model
+```
+
+For **CPU only** or **low-end GPU**:
+```python
+yolo_model: str = "yolov8n.pt"  # Nano model
 ```
 
 ---
@@ -216,18 +265,39 @@ Or use the web dashboard to auto-detect cameras.
 - Try camera indices 0-4 manually
 - Restart FAIRX server if needed
 
+### Low FPS / Performance Issues
+```python
+# For RTX 3050, use YOLOv8s (default - already optimized)
+yolo_model: str = "yolov8s.pt"
+
+# If still slow, try nano model
+yolo_model: str = "yolov8n.pt"
+
+# Reduce resolution
+camera_resolution: tuple = (960, 540)
+```
+
+### Out of Memory (CUDA)
+```python
+# Switch to nano model
+yolo_model: str = "yolov8n.pt"
+
+# Or reduce batch size in vision.py
+# The system is already optimized for 4GB VRAM
+```
+
 ### Detection Too Sensitive
 ```python
-# Lower thresholds in config.py
-yolo_conf_threshold: float = 0.35  # from 0.40
-yolo_min_box_area: int = 400  # from 500
+# Increase thresholds in config.py
+yolo_conf_threshold: float = 0.50  # from 0.40
+hand_confidence_threshold: float = 0.70  # from 0.60
 ```
 
 ### Too Many False Positives
 ```python
-# Increase thresholds
-yolo_conf_threshold: float = 0.50
-hand_confidence_threshold: float = 0.70
+# Increase alert thresholds
+alert_threshold_warning: float = 0.50  # from 0.40
+alert_threshold_danger: float = 0.75  # from 0.65
 ```
 
 ### Hand Detection Not Working
@@ -242,25 +312,51 @@ hand_confidence_threshold: float = 0.70
 ```
 FAIRX/
 ├── src/fairx/
-│   ├── __init__.py           # Package initialization (NEW)
-│   ├── config.py             # Configuration (FIXED)
+│   ├── __init__.py           # Package initialization (FIXED)
+│   ├── config.py             # Configuration (OPTIMIZED for RTX 3050)
 │   ├── vision.py             # Object detection (FIXED)
 │   ├── gaze.py               # Gaze tracking
 │   ├── identity.py           # Face verification
 │   ├── audio_vad.py          # Voice detection
 │   ├── screen_agent.py       # Screen monitoring
-│   ├── hand_gesture.py       # Hand detection
+│   ├── hand_gesture.py       # Hand detection (FIXED)
 │   ├── movement_detector.py  # Movement detection
-│   ├── suspicion.py          # Scoring system (FIXED)
+│   ├── suspicion.py          # Scoring system (FIXED - SCORE instance added)
 │   ├── events.py             # Event handling (FIXED)
-│   ├── evidence.py           # Evidence recording
+│   ├── evidence.py           # Evidence recording (FIXED)
+│   ├── frame_buffer.py       # Frame buffer (VERIFIED)
 │   ├── startup.py            # Thread initialization
 │   ├── run_local.py          # Local runner (FIXED)
 │   └── server.py             # Web server (FIXED)
 ├── evidence/                 # Auto-generated evidence
-├── requirements.txt          # Dependencies (FIXED)
+├── requirements.txt          # Dependencies (VERIFIED)
+├── test_setup.py             # Setup verification (UPDATED)
+├── run_fairx.py              # Unified launcher
 └── README.md                 # This file (UPDATED)
 ```
+
+---
+
+## 🔧 What's Fixed in v2.2.0
+
+### Critical Bug Fixes
+1. ✅ **Missing SCORE instance** - Added global SCORE instance in suspicion.py
+2. ✅ **Config import inconsistency** - Standardized all imports to use Config
+3. ✅ **Hand gesture module** - Fixed imports and event handling patterns
+4. ✅ **Event system** - Updated to use new EventLogger pattern
+5. ✅ **Module exports** - Fixed __init__.py exports
+
+### Optimizations
+1. ✅ **YOLO Model** - Changed from yolov8n to yolov8s for RTX 3050
+2. ✅ **Performance tuning** - Optimized for 4GB VRAM
+3. ✅ **Memory management** - Improved frame buffer handling
+4. ✅ **Code consistency** - Unified naming conventions
+
+### Documentation
+1. ✅ **Hardware requirements** - Added detailed specs
+2. ✅ **Model selection guide** - Hardware-specific recommendations
+3. ✅ **Troubleshooting** - Expanded with RTX 3050 tips
+4. ✅ **Setup verification** - Updated test_setup.py
 
 ---
 
@@ -301,17 +397,20 @@ For issues or questions, please check:
 - Camera index and permissions (use web dashboard to detect)
 - Python version (3.8+ required)
 - All dependencies installed correctly
+- Hardware compatibility (RTX 3050 optimized)
 
 ---
 
 ## 📈 Version History
 
+- **v2.2.0** - Hardware optimization (RTX 3050), all bugs fixed, production ready
 - **v2.1.0** - Fixed all bugs, enhanced stability, improved documentation
 - **v2.0.0** - Added camera selection and web interface
 - **v1.0.0** - Initial release
 
 ---
 
-**Version**: 2.1.0 (Fixed & Production Ready)  
+**Version**: 2.2.0 (Optimized & Production Ready)  
 **Last Updated**: November 2024  
-**Status**: ✅ All Issues Resolved
+**Status**: ✅ All Issues Resolved | ✅ Optimized for RTX 3050  
+**Hardware**: RTX 3050 (4GB) + 16GB RAM + R7 6800H

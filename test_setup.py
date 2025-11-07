@@ -48,24 +48,38 @@ except ImportError as e:
 # Test FAIRX modules
 print("\n2. Testing FAIRX modules...")
 try:
-    from src.fairx.config import CFG
+    from src.fairx.config import Config
     print("   ✓ config")
 except ImportError as e:
     print(f"   ✗ config: {e}")
     sys.exit(1)
 
 try:
-    from src.fairx.video_source import VideoSource
-    print("   ✓ video_source")
+    from src.fairx.suspicion import SCORE
+    print("   ✓ suspicion (SCORE instance)")
 except ImportError as e:
-    print(f"   ✗ video_source: {e}")
+    print(f"   ✗ suspicion: {e}")
     sys.exit(1)
 
 try:
-    from src.fairx.vision import VisionThread
+    from src.fairx.vision import VisionDetector
     print("   ✓ vision")
 except ImportError as e:
     print(f"   ✗ vision: {e}")
+    sys.exit(1)
+
+try:
+    from src.fairx.events import EventLogger
+    print("   ✓ events")
+except ImportError as e:
+    print(f"   ✗ events: {e}")
+    sys.exit(1)
+
+try:
+    from src.fairx.evidence import EvidenceRecorder
+    print("   ✓ evidence")
+except ImportError as e:
+    print(f"   ✗ evidence: {e}")
     sys.exit(1)
 
 try:
@@ -92,8 +106,9 @@ else:
 # Test YOLO model
 print("\n4. Testing YOLO model...")
 try:
-    model = YOLO("yolov8n.pt")
-    print("   ✓ YOLO model loaded successfully")
+    model = YOLO("yolov8s.pt")
+    print("   ✓ YOLO model (yolov8s) loaded successfully")
+    print("   ℹ Optimized for RTX 3050 (4GB VRAM)")
 except Exception as e:
     print(f"   ⚠ YOLO model: {e}")
     print("   Note: Model will be downloaded on first run")
@@ -101,7 +116,11 @@ except Exception as e:
 print("\n" + "="*60)
 print("Setup test completed!")
 print("="*60)
+print("\nHardware Optimization:")
+print("  • YOLO Model: YOLOv8s (optimal for RTX 3050)")
+print("  • Target Hardware: RTX 3050 + 16GB RAM + R7 6800H")
 print("\nYou can now run:")
 print("  1. python -m src.fairx.run_local")
-print("  2. python -m uvicorn src.fairx.server:app --host 0.0.0.0 --port 8000 --reload")
+print("  2. python -m src.fairx.server")
+print("  3. python run_fairx.py")
 print()

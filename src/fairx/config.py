@@ -1,6 +1,6 @@
 """
 FAIRX Configuration Module
-Fixed and optimized configuration settings
+Optimized for RTX 3050 (4GB VRAM) + 16GB RAM + R7 6800H
 """
 from typing import Tuple
 import os
@@ -14,7 +14,9 @@ class Config:
     fps: int = 30
     
     # ============ YOLO Object Detection ============
-    yolo_model: str = "yolov8n.pt"  # Nano model for speed
+    # Optimized for RTX 3050 (4GB VRAM)
+    # YOLOv8s provides best balance of speed and accuracy for this hardware
+    yolo_model: str = "yolov8s.pt"  # Small model - optimal for RTX 3050
     yolo_conf_threshold: float = 0.40  # Confidence threshold
     yolo_iou_threshold: float = 0.45  # IoU threshold for NMS
     yolo_min_box_area: int = 500  # Minimum bounding box area
@@ -30,6 +32,7 @@ class Config:
     hand_confidence_threshold: float = 0.60
     hand_detection_enabled: bool = True
     min_hand_detection_confidence: float = 0.5
+    hand_movement_threshold: float = 150  # Pixel difference threshold
     
     # ============ Movement Detection ============
     movement_threshold: float = 100  # Pixel difference threshold
@@ -54,6 +57,7 @@ class Config:
     ENABLE_MOVEMENT_DETECTION: bool = True
     ENABLE_GAZE_TRACKING: bool = True
     ENABLE_EVIDENCE_RECORDING: bool = True
+    ENABLE_EVIDENCE: bool = True  # Alias for compatibility
     
     # ============ Audio Detection ============
     audio_sample_rate: int = 16000
@@ -69,6 +73,15 @@ class Config:
     
     video_clip_duration: int = 8  # seconds (4 before + 4 after)
     max_evidence_age_days: int = 30  # Auto-cleanup old evidence
+    
+    # ============ Event Cooldowns ============
+    event_cooldown: dict = {
+        'hand_gesture': 2.0,
+        'paper_passing': 3.0,
+        'device': 2.0,
+        'gaze': 1.5,
+        'movement': 2.5
+    }
     
     # ============ Suspicion Scoring Weights ============
     WEIGHTS = {
@@ -104,3 +117,6 @@ class Config:
 
 # Initialize directories on import
 Config.ensure_directories()
+
+# Alias for backward compatibility
+CFG = Config

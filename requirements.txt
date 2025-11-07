@@ -1,4 +1,4 @@
-# FAIRX - Fixed Requirements File
+# FAIRX - Requirements File (Optimized for RTX 3050)
 # Core AI/ML libraries
 ultralytics>=8.0.0
 opencv-python>=4.8.0.74
@@ -12,9 +12,9 @@ uvicorn[standard]>=0.24.0
 python-multipart>=0.0.6
 websockets>=12.0
 
-# Audio processing
+# Audio processing (optional - may require system dependencies)
 webrtcvad>=2.0.10
-pyaudio>=0.2.13
+# pyaudio>=0.2.13  # Commented out - requires portaudio system library
 
 # Data validation
 pydantic>=2.0.0
@@ -23,6 +23,6 @@ pydantic>=2.0.0
 python-dotenv>=1.0.0
 aiofiles>=23.0.0
 
-# Optional but recommended
+# PyTorch with CUDA support (for RTX 3050)
 torch>=2.0.0
 torchvision>=0.15.0

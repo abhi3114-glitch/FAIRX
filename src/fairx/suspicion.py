@@ -44,6 +44,17 @@ class SuspicionTracker:
         
         logger.debug(f"Event added: {event_type} (confidence: {confidence:.2f}, score: {event['score']:.2f})")
     
+    def add(self, event_dict: dict):
+        """
+        Alias for add_event to support legacy code patterns
+        
+        Args:
+            event_dict: Dictionary with 'type' and 'confidence' keys
+        """
+        event_type = event_dict.get('type', 'unknown')
+        confidence = event_dict.get('confidence', 0.5)
+        self.add_event(event_type, confidence)
+    
     def _update_score(self):
         """Calculate current suspicion score with time decay"""
         current_time = time.time()
@@ -155,3 +166,6 @@ class SuspicionTracker:
                 default=None
             )
         }
+
+# Global instance for easy import
+SCORE = SuspicionTracker()
