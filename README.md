@@ -406,7 +406,7 @@ For issues or questions, please check:
 - **v2.2.0** - Hardware optimization (RTX 3050), all bugs fixed, production ready
 - **v2.1.0** - Fixed all bugs, enhanced stability, improved documentation
 - **v2.0.0** - Added camera selection and web interface
-- **v1.0.0** - Initial release
+- **v1.0.0** - Initial release 
 
 ---
 
